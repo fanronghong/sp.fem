@@ -37,7 +37,7 @@ def get_quadrature(refdom, norder):
     -------
     np.array
         A two-dimensional array of quadrature points. The size of the array
-        is number-of-dimensions x number-of-quadrature points.
+        is number-of-dimensions \times number-of-quadrature points.
 
     np.array
         A one-dimensional array of quadrature weights.
@@ -117,5 +117,20 @@ def get_quadrature_line(norder):
     """Return a nth order accurate quadrature rule for line [0,1]."""
     if norder <= 1:
         norder = 2
-    X, W = np.polynomial.legendre.leggauss(np.ceil((norder + 1.0)/2.0))
-    return np.array([0.5*X + 0.5]), W/2.0
+    # https://docs.scipy.org/doc/numpy-1.15.0/reference/generated/numpy.polynomial.legendre.leggauss.html
+    X, W = np.polynomial.legendre.leggauss(int(np.ceil((norder + 1.0)/2.0))) # np.ceil()向上取整
+    return np.array([0.5*X + 0.5]), W/2.0 # 上面求得的点实在[-1, 1]的, y=(x+1)/2
+
+
+if __name__ == '__main__':
+    pts, weights = get_quadrature_tri(5)
+    print("reference triangle quadrature points: \n", pts)
+    print("reference triangle quadrature weights: \n", weights)
+
+    pts, weights = get_quadrature_tet(1)
+    print("\nreference tetrahedra quadrature points: \n", pts)
+    print("reference tetrahedra quadrature weights: \n", weights)
+
+    pts, weights = get_quadrature_line(3)
+    print("\nreference line quadrature points: \n", pts)
+    print("reference line quadrature weights: \n", weights)
