@@ -3,5 +3,4 @@
 *.swp
 *.pyc
 *.plk
-/*.py
 !/setup.py
