@@ -804,12 +804,12 @@ class MeshTri(Mesh):
                               [0, 0, 1]], dtype=np.float_)
                 t = np.array([[0, 1, 2]], dtype=np.intp).T
             else:
-                p = np.array([[0, 1, 0, 1], [0, 0, 1, 1]], dtype=np.float_)
-                t = np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp).T
+                p = np.array([[0, 1, 0, 1], [0, 0, 1, 1]], dtype=np.float_) # 网格的4个点坐标
+                t = np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp).T # 由上面4个点的标号构成的2个三角形单元
         elif p is None or t is None:
             raise Exception("Must provide p AND t or neither")
-        self.p = p
-        self.t = t
+        self.p = p # 可以理解为point
+        self.t = t # 可以理解为triangle
         if validate:
             self._validate()
         self._build_mappings(sort_t=sort_t)
@@ -817,9 +817,10 @@ class MeshTri(Mesh):
     def _build_mappings(self, sort_t=True): # TODO 这个函数很重要，但还不是很清楚具体做了些啥
         # sort to preserve orientations etc.
         if sort_t:
-            self.t = np.sort(self.t, axis=0)
+            self.t = np.sort(self.t, axis=0) # TODO 这个排序有何意义？一个三角形只有3个点，且这三个点是没有顺序的？
 
-        # define facets: in the order (0,1) (1,2) (0,2)
+        # define facets: in the order (0,1) (1,2) (0,2)。始终记住：self.t保存的所有单元的节点编号，一个单元一列（3个，对三角形）编号
+        # self.facet保存所有的edge单元的节点编号
         self.facets = np.sort(np.vstack((self.t[0, :], self.t[1, :])), axis=0)
         self.facets = np.hstack((self.facets,
                                  np.sort(np.vstack((self.t[1, :], self.t[2, :])),
@@ -827,30 +828,32 @@ class MeshTri(Mesh):
         self.facets = np.hstack((self.facets,
                                  np.sort(np.vstack((self.t[0, :], self.t[2, :])),
                                          axis=0)))
+        # 上面3步形成的facets里面有重复的，包含所有三角形的所有边，区域内部边包含了2次；下面去重
 
         # get unique facets and build triangle-to-facet
         # mapping: 3 (edges) x Ntris
         tmp = np.ascontiguousarray(self.facets.T)
-        tmp, ixa, ixb = np.unique(tmp.view([('', tmp.dtype)] * tmp.shape[1]),
-                                  return_index=True, return_inverse=True)
-        self.facets = self.facets[:, ixa]
-        self.t2f = ixb.reshape((3, self.t.shape[1]))
+        tmp, ixa, ixb = np.unique(tmp.view([('', tmp.dtype)] * tmp.shape[1]), # view()就是产生一个视图； tmp.shape[1]就是2，一条facet由2个点的编号组成
+                                  return_index=True, return_inverse=True) # 默认对所有行做unique()
+        self.facets = self.facets[:, ixa] # 得到没有重复的facets的点编号
+        self.t2f = ixb.reshape((3, self.t.shape[1])) # triange2facet: 每个三角形对应的facet的编号； tmp[ixb]就是最开始没有去重的facets.T
 
         # build facet-to-triangle mapping: 2 (triangles) x Nedges
-        e_tmp = np.hstack((self.t2f[0, :], self.t2f[1, :], self.t2f[2, :]))
-        t_tmp = np.tile(np.arange(self.t.shape[1]), (1, 3))[0]
+        e_tmp = np.hstack((self.t2f[0, :], self.t2f[1, :], self.t2f[2, :])) # 所有三角形的所有facets的编号形成一个行向量，有重复
+        t_tmp = np.tile(np.arange(self.t.shape[1]), (1, 3))[0] # t.shape[1]就是三角形个数，用（1,3）是想保存每个三角形所对应的facet的编号，1个三角形3个facets
 
-        e_first, ix_first = np.unique(e_tmp, return_index=True)
+        e_first, ix_first = np.unique(e_tmp, return_index=True) # 对所有facets（有重复）去重并从小到大排序赋值给 e_first
         # this emulates matlab unique(e_tmp,'last')
-        e_last, ix_last = np.unique(e_tmp[::-1], return_index=True)
-        ix_last = e_tmp.shape[0] - ix_last - 1
+        e_last, ix_last = np.unique(e_tmp[::-1], return_index=True) # [::-1]反转顺序. 似乎e_first与e_last相等？
+        ix_last = e_tmp.shape[0] - ix_last - 1 # e_tmp[0]就是所有三角形的facets（有重复）个数
 
+        # self.facets.shape[1]就是所有facets（没有重复的）的个数；维数里的2表示一个fancet最多属于两个三角形，只属于1个三角形的用-1表示对应第二行的值（见下面）
         self.f2t = np.zeros((2, self.facets.shape[1]), dtype=np.int64)
-        self.f2t[0, e_first] = t_tmp[ix_first]
-        self.f2t[1, e_last] = t_tmp[ix_last]
+        self.f2t[0, e_first] = t_tmp[ix_first] # TODO？？
+        self.f2t[1, e_last] = t_tmp[ix_last] # TODO？？
 
         # second row to zero if repeated (i.e., on boundary)
-        self.f2t[1, np.nonzero(self.f2t[0, :] == self.f2t[1, :])[0]] = -1
+        self.f2t[1, np.nonzero(self.f2t[0, :] == self.f2t[1, :])[0]] = -1 # 把重复的facets的第二个节点编号变成-1.f2t保存的是self.facets的每个facet所属的三角形的编号
 
     def boundary_nodes(self):
         """Return an array of boundary node indices."""

@@ -209,17 +209,17 @@ class MappingAffine(Mapping):
             
             self.A={0:{},1:{}}
     
-            self.A[0][0]=mesh.p[0,mesh.t[1,:]]-mesh.p[0,mesh.t[0,:]]
-            self.A[0][1]=mesh.p[0,mesh.t[2,:]]-mesh.p[0,mesh.t[0,:]]
-            self.A[1][0]=mesh.p[1,mesh.t[1,:]]-mesh.p[1,mesh.t[0,:]]
-            self.A[1][1]=mesh.p[1,mesh.t[2,:]]-mesh.p[1,mesh.t[0,:]]
+            self.A[0][0]=mesh.p[0,mesh.t[1,:]]-mesh.p[0,mesh.t[0,:]] # 所有单元的第2个点x坐标 减去 第1个点x坐标
+            self.A[0][1]=mesh.p[0,mesh.t[2,:]]-mesh.p[0,mesh.t[0,:]] # 所有单元的第3个点x坐标 减去 第1个点x坐标
+            self.A[1][0]=mesh.p[1,mesh.t[1,:]]-mesh.p[1,mesh.t[0,:]] # 所有单元的第2个点y坐标 减去 第1个点y坐标
+            self.A[1][1]=mesh.p[1,mesh.t[2,:]]-mesh.p[1,mesh.t[0,:]] # 所有单元的第3个点y坐标 减去 第1个点y坐标
     
             self.b={}
     
-            self.b[0]=mesh.p[0,mesh.t[0,:]]
-            self.b[1]=mesh.p[1,mesh.t[0,:]]
+            self.b[0]=mesh.p[0,mesh.t[0,:]] # 所有单元的起点x坐标
+            self.b[1]=mesh.p[1,mesh.t[0,:]] # 所有单元的起点y坐标
     
-            self.detA=self.A[0][0]*self.A[1][1]-self.A[0][1]*self.A[1][0]
+            self.detA=self.A[0][0]*self.A[1][1]-self.A[0][1]*self.A[1][0] # TODO？
     
             self.invA={0:{},1:{}}
     
