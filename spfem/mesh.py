@@ -154,14 +154,14 @@ class Mesh(object):
 class MeshLine(Mesh):
     """One-dimensional mesh."""
 
-    refdom = "line"
-    brefdom = "point"
+    refdom = "line" # 网格的类型
+    brefdom = "point" # 网格边界（应该交单元边界吧？）的类型
 
     def __init__(self, p=None, t=None, validate=True):
         super(MeshLine, self).__init__(p, t)
         if p is None and t is None:
-            p = np.array([[0, 1]])
-            t = np.array([[0], [1]])
+            p = np.array([[0, 1]]) # 参考线段，1维区间[0, 1]
+            t = np.array([[0], [1]]) # 左右端点编号分别为0， 1
         elif p is None or t is None:
             raise Exception("Must provide p AND t or neither")
         self.p = p
@@ -171,16 +171,18 @@ class MeshLine(Mesh):
 
     def refine(self, N=1):
         """Perform one or more uniform refines on the mesh."""
-        for _ in range(N):
+        for _ in range(N): # _ 替代常用的i，j，k，GOOD
             self._single_refine()
 
-    def _single_refine(self):
+    def _single_refine(self): # 下面的加密是二分加密，且只加密1次
         """Perform a single mesh refine that halves 'h'."""
         # rename variables
         t = self.t
         p = self.p
 
-        mid = range(self.t.shape[1]) + np.max(t) + 1
+        # 生成新的点的编号，并保持原来的点的编号不变，新生成的点的编号在原来点的编号的基础上递增
+        mid = range(self.t.shape[1]) + np.max(t) + 1 # t.shape[1]表示有多少线段单元
+
         # new vertices and elements
         newp = np.hstack((p, 0.5*(p[:, self.t[0, :]] + p[:, self.t[1, :]])))
         newt = np.vstack((t[0, :], mid))
@@ -196,7 +198,7 @@ class MeshLine(Mesh):
 
     def interior_nodes(self):
         """Find the interior nodes of the mesh."""
-        _, counts = np.unique(self.t.flatten(), return_counts=True)
+        _, counts = np.unique(self.t.flatten(), return_counts=True) # 参考boundary_nodes()的注释
         return np.nonzero(counts == 2)[0]
 
     def plot(self, u, color='ko-'):
@@ -216,7 +218,7 @@ class MeshLine(Mesh):
         plt.plot(xs, ys, color)
 
     def mapping(self):
-        return spfem.mapping.MappingAffine(self)
+        return spfem.mapping.MappingAffine(self) # TODO, 这个类最重要的就是这里
 
 
 class MeshQuad(Mesh):
@@ -228,7 +230,7 @@ class MeshQuad(Mesh):
     def __init__(self, p=None, t=None, validate=True):
         super(MeshQuad, self).__init__(p, t)
         if p is None and t is None:
-            p = np.array([[0, 0], [1, 0], [1, 1], [0, 1]]).T
+            p = np.array([[0, 0], [1, 0], [1, 1], [0, 1]]).T # 二维平面上的标准正方形单元
             t = np.array([[0, 1, 2, 3]]).T
         elif p is None or t is None:
             raise Exception("Must provide p AND t or neither")
@@ -812,7 +814,7 @@ class MeshTri(Mesh):
             self._validate()
         self._build_mappings(sort_t=sort_t)
 
-    def _build_mappings(self, sort_t=True):
+    def _build_mappings(self, sort_t=True): # TODO 这个函数很重要，但还不是很清楚具体做了些啥
         # sort to preserve orientations etc.
         if sort_t:
             self.t = np.sort(self.t, axis=0)
@@ -1047,12 +1049,12 @@ class MeshTri(Mesh):
         # rename variables
         t = self.t
         p = self.p
-        e = self.facets
+        e = self.facets # edge for triangle
         sz = p.shape[1]
         t2f = self.t2f + sz
         # new vertices are the midpoints of edges
         newp = 0.5*np.vstack((p[0, e[0, :]] + p[0, e[1, :]],
-                              p[1, e[0, :]] + p[1, e[1, :]]))
+                              p[1, e[0, :]] + p[1, e[1, :]])) # 新增点，不包括原来的点
         newp = np.hstack((p, newp))
         # build new triangle definitions
         newt = np.vstack((t[0, :], t2f[0, :], t2f[2, :]))

@@ -4,7 +4,7 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
-from spfem.mesh import MeshTri, MeshTet
+from spfem.mesh import MeshTri, MeshTet, MeshLine, MeshQuad
 from spfem.assembly import AssemblerElement
 from spfem.element import ElementTriP2, ElementTetP2, ElementTetP1
 
@@ -48,7 +48,9 @@ def TriP2Test():
     dexact[1]=dUdy
 
     mesh=MeshTri()
+    mesh.draw()
     mesh.refine(1)
+    mesh.draw()
     hs=np.array([])
     H1errs=np.array([])
     L2errs=np.array([])
@@ -77,7 +79,7 @@ def TriP2Test():
     assert (pfit[0] >= 0.95*2)
 
 
-def Poisson_P1P2():
+def Poisson_tetP1P2():
     """Tetrahedral refinements with P1 and P2 elements."""
     # define data
     def F(x, y, z):
@@ -186,8 +188,25 @@ def Poisson_P1P2():
     assert (pfit1[0] >= 1)
     assert (pfit2[0] >= 2)
 
+def example():
+    mesh = MeshLine()
+    mesh.refine(2)
+    print(mesh.boundary_nodes())
+    print(mesh.interior_nodes())
+    # u = np.array([1, 5, 3, 2, 4]) # 在网格节点上的函数值，有顺序
+    # mesh.plot(u)
+    # plt.show()
+    mapping = mesh.mapping() # 对一维没什么内容，重点看二维，三维
+
+    tri = MeshTri(initmesh="reftri")
+    tri.refine(1)
+    tri.draw()
+    mapping = tri.mapping() # CONTINUE
+
+    pass
 
 if __name__ == '__main__':
     # TriP2Test()
-    Poisson_P1P2()
+    # Poisson_tetP1P2()
+    example()
     pass

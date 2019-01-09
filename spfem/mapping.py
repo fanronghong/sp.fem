@@ -197,8 +197,8 @@ class MappingAffine(Mapping):
         if isinstance(mesh,fmsh.MeshLine):
             self.dim=1
             
-            self.A=mesh.p[0,mesh.t[1,:]]-mesh.p[0,mesh.t[0,:]]
-            self.b=mesh.p[0,mesh.t[0,:]]
+            self.A=mesh.p[0,mesh.t[1,:]]-mesh.p[0,mesh.t[0,:]] # 所有线段单元的长度
+            self.b=mesh.p[0,mesh.t[0,:]] # 所有线段单元的起点坐标
             
             self.detA=self.A
             
