@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from spfem.mesh import MeshTri, MeshTet, MeshLine, MeshQuad
 from spfem.assembly import AssemblerElement
-from spfem.element import ElementTriP2, ElementTetP2, ElementTetP1
+from spfem.element import ElementTriP2, ElementTetP2, ElementTetP1, ElementTriP1
 
 
 
@@ -188,6 +188,40 @@ def Poisson_tetP1P2():
     assert (pfit1[0] >= 1)
     assert (pfit2[0] >= 2)
 
+def Poisson_triP1():
+    mesh = MeshTri()
+    mesh.refine(5)
+    mesh.draw()
+    plt.show()
+
+    # boundary and interior node sets
+    D1 = np.nonzero(mesh.p[0, :] == 0)[0]
+    D2 = np.nonzero(mesh.p[1, :] == 0)[0]
+    D3 = np.nonzero(mesh.p[0, :] == 1)[0]
+    D4 = np.nonzero(mesh.p[1, :] == 1)[0]
+
+    D = np.union1d(D1, D2);
+    D = np.union1d(D, D3);
+    D = np.union1d(D, D4);
+
+    I = np.setdiff1d(np.arange(0, mesh.p.shape[1]), D)
+
+    bilin = lambda u, v, du, dv, x, h: du[0] * dv[0] + du[1] * dv[1]
+    lin = lambda v, dv, x, h: 1 * v
+
+    a = AssemblerElement(mesh, ElementTriP1())
+
+    A = a.iasm(bilin)
+    f = a.iasm(lin)
+
+    x = np.zeros(A.shape[0])
+    I = I
+    x[I] = spsolve(A[np.ix_(I, I)], f[I])
+
+    assert np.round(np.max(x) - 0.073614737354524146, 8) == 0
+    print(np.max(x))
+
+
 def example():
     mesh = MeshLine()
     mesh.refine(2)
@@ -208,5 +242,6 @@ def example():
 if __name__ == '__main__':
     # TriP2Test()
     # Poisson_tetP1P2()
-    example()
+    # example()
+    Poisson_triP1()
     pass
