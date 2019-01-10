@@ -836,7 +836,7 @@ class AssemblerElement(Assembler):
             self.elem_v = elem_v
             self.dofnum_v = Dofnum(mesh, elem_v)
 
-    def iasm(self, form, intorder=None, tind=None, interp=None):
+    def iasm(self, form, intorder=None, tind=None, interp=None): # FIXME 重要！ 单刚计算，并合成总刚的关键函数
         """Return a matrix related to a bilinear or linear form
         where the integral is over the interior of the domain.
 
@@ -918,7 +918,7 @@ class AssemblerElement(Assembler):
         """
         if tind is None:
             # assemble on all elements by default
-            tind = range(self.mesh.t.shape[1])
+            tind = range(self.mesh.t.shape[1]) # triangle or tetrahedron index?
         nt = len(tind)
         if intorder is None:
             # compute the maximum polynomial degree from elements
@@ -938,7 +938,7 @@ class AssemblerElement(Assembler):
         X, W = get_quadrature(self.mesh.refdom, intorder)
 
         # global quadrature points
-        x = self.mapping.F(X, tind)
+        x = self.mapping.F(X, tind) # 将参考单元上的积分点变换到积分区域内 F(X) = A*X + b = x，重点搞清楚A，b的形成
 
         # jacobian at quadrature points
         detDF = self.mapping.detDF(X, tind)
@@ -977,7 +977,7 @@ class AssemblerElement(Assembler):
                     ixs = slice(nt*(Nbfun_v*j+i), nt*(Nbfun_v*j+i+1))
 
                     # compute entries of local stiffness matrices
-                    data[ixs] = np.dot(fform(u, v, du, dv, x, w, h)
+                    data[ixs] = np.dot(fform(u, v, du, dv, x, w, h) # FIXME 这里就是在单刚合成总刚？？？
                                        * np.abs(detDF), W)
                     rows[ixs] = self.dofnum_v.t_dof[i, tind]
                     cols[ixs] = self.dofnum_u.t_dof[j, tind]

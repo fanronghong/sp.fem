@@ -820,7 +820,7 @@ class MeshTri(Mesh):
             self.t = np.sort(self.t, axis=0) # TODO 这个排序有何意义？一个三角形只有3个点，且这三个点是没有顺序的？
 
         # define facets: in the order (0,1) (1,2) (0,2)。始终记住：self.t保存的所有单元的节点编号，一个单元一列（3个，对三角形）编号
-        # self.facet保存所有的edge单元的节点编号
+        # self.facet保存所有的edge单元的节点编号： 所有单元的第一条边，然后hstack上所有单元第二条边，最后hstack上所有单元的最后一条边
         self.facets = np.sort(np.vstack((self.t[0, :], self.t[1, :])), axis=0)
         self.facets = np.hstack((self.facets,
                                  np.sort(np.vstack((self.t[1, :], self.t[2, :])),
@@ -828,6 +828,7 @@ class MeshTri(Mesh):
         self.facets = np.hstack((self.facets,
                                  np.sort(np.vstack((self.t[0, :], self.t[2, :])),
                                          axis=0)))
+        # 注意这里形成facets的方式（里面隐含了三角形的索引）与下面“self.t2f = ixb.reshape((3, self.t.shape[1]))”，“t_tmp = np.tile(np.arange(self.t.shape[1]), (1, 3))[0]”紧密相关！！！
         # 上面3步形成的facets里面有重复的，包含所有三角形的所有边，区域内部边包含了2次；下面去重
 
         # get unique facets and build triangle-to-facet
@@ -835,22 +836,22 @@ class MeshTri(Mesh):
         tmp = np.ascontiguousarray(self.facets.T)
         tmp, ixa, ixb = np.unique(tmp.view([('', tmp.dtype)] * tmp.shape[1]), # view()就是产生一个视图； tmp.shape[1]就是2，一条facet由2个点的编号组成
                                   return_index=True, return_inverse=True) # 默认对所有行做unique()
-        self.facets = self.facets[:, ixa] # 得到没有重复的facets的点编号
+        self.facets = self.facets[:, ixa] # 得到没有重复的facets(也就是最终的facets)的点编号
         self.t2f = ixb.reshape((3, self.t.shape[1])) # triange2facet: 每个三角形对应的facet的编号； tmp[ixb]就是最开始没有去重的facets.T
 
         # build facet-to-triangle mapping: 2 (triangles) x Nedges
-        e_tmp = np.hstack((self.t2f[0, :], self.t2f[1, :], self.t2f[2, :])) # 所有三角形的所有facets的编号形成一个行向量，有重复
-        t_tmp = np.tile(np.arange(self.t.shape[1]), (1, 3))[0] # t.shape[1]就是三角形个数，用（1,3）是想保存每个三角形所对应的facet的编号，1个三角形3个facets
+        e_tmp = np.hstack((self.t2f[0, :], self.t2f[1, :], self.t2f[2, :])) # 所有三角形的所有facets的编号形成一个行向量，有重复；与上面ixb一样；
+        t_tmp = np.tile(np.arange(self.t.shape[1]), (1, 3))[0] # t.shape[1]就是三角形个数，用（1,3）是想保存每个三角形所对应的facet的编号，1个三角形3个facets；与最初形成facets的方式相关（所有单元的第一条边，然后hstack上所有单元第二条边，最后hstack上所有单元的最后一条边）
 
         e_first, ix_first = np.unique(e_tmp, return_index=True) # 对所有facets（有重复）去重并从小到大排序赋值给 e_first
         # this emulates matlab unique(e_tmp,'last')
         e_last, ix_last = np.unique(e_tmp[::-1], return_index=True) # [::-1]反转顺序. 似乎e_first与e_last相等？
-        ix_last = e_tmp.shape[0] - ix_last - 1 # e_tmp[0]就是所有三角形的facets（有重复）个数
+        ix_last = e_tmp.shape[0] - ix_last - 1 # e_tmp[0]就是所有三角形的facets（有重复）个数。对于e_tmp中非重复的元素，取倒序然后unique得到的ix_last与未取倒序得到的ix_first之和就是e_tmp.shape[0]-1(对重复元素还要再减去重复出现的次数)
 
         # self.facets.shape[1]就是所有facets（没有重复的）的个数；维数里的2表示一个fancet最多属于两个三角形，只属于1个三角形的用-1表示对应第二行的值（见下面）
         self.f2t = np.zeros((2, self.facets.shape[1]), dtype=np.int64)
-        self.f2t[0, e_first] = t_tmp[ix_first] # TODO？？
-        self.f2t[1, e_last] = t_tmp[ix_last] # TODO？？
+        self.f2t[0, e_first] = t_tmp[ix_first] # 原本 e_tmp[ix_first] == e_first, 而e_tmp和t_tmp的shape一样
+        self.f2t[1, e_last] = t_tmp[ix_last] # 原本 e_tmp[::-1][ix_last] == e_last
 
         # second row to zero if repeated (i.e., on boundary)
         self.f2t[1, np.nonzero(self.f2t[0, :] == self.f2t[1, :])[0]] = -1 # 把重复的facets的第二个节点编号变成-1.f2t保存的是self.facets的每个facet所属的三角形的编号
@@ -861,11 +862,11 @@ class MeshTri(Mesh):
 
     def boundary_facets(self):
         """Return an array of boundary facet indices."""
-        return np.nonzero(self.f2t[1, :] == -1)[0]
+        return np.nonzero(self.f2t[1, :] == -1)[0] # 因为有“self.f2t[1, np.nonzero(self.f2t[0, :] == self.f2t[1, :])[0]] = -1”
 
     def interior_facets(self):
         """Return an array of interior facet indices."""
-        return np.nonzero(self.f2t[1, :] >= 0)[0]
+        return np.nonzero(self.f2t[1, :] >= 0)[0] # 因为有“self.f2t[1, np.nonzero(self.f2t[0, :] == self.f2t[1, :])[0]] = -1”
 
     def nodes_satisfying(self, test):
         """Return nodes that satisfy some condition."""
@@ -885,7 +886,7 @@ class MeshTri(Mesh):
 
     def interior_nodes(self):
         """Return an array of interior node indices."""
-        return np.setdiff1d(np.arange(0, self.p.shape[1]), self.boundary_nodes())
+        return np.setdiff1d(np.arange(0, self.p.shape[1]), self.boundary_nodes()) # self.p.shape[1] 表示所有点的编号，
 
     def interpolator(self, x):
         """Return a function which interpolates values with P1 basis."""
@@ -908,7 +909,7 @@ class MeshTri(Mesh):
     def param(self):
         """Return mesh parameter."""
         return np.max(np.sqrt(np.sum((self.p[:, self.facets[0, :]] -
-                                      self.p[:, self.facets[1, :]])**2, axis=0)))
+                                      self.p[:, self.facets[1, :]])**2, axis=0))) # 最长边的长度？
 
     def smooth(self, c=1.0):
         """Apply smoothing to interior nodes."""
@@ -973,14 +974,14 @@ class MeshTri(Mesh):
 
     def draw_nodes(self, nodes, mark='bo'):
         """Highlight some nodes."""
-        plt.plot(self.p[0, nodes], self.p[1, nodes], mark)
+        plt.plot(self.p[0, nodes], self.p[1, nodes], mark) # 没有创建新的figure，意味着在当前已有的figure上面作图
 
     def plot(self, z, smooth=False, nofig=False, zlim=None):
         """Visualize nodal or elemental function (2d)."""
         if nofig:
             fig = 0
         else:
-            fig = plt.figure()
+            fig = plt.figure() # 创建新的figure
         if zlim == None:
             if smooth:
                 plt.tripcolor(self.p[0, :], self.p[1, :], self.t.T, z,
@@ -1070,8 +1071,8 @@ class MeshTri(Mesh):
 
         self._build_mappings()
 
-    def _neighbors(self, tris=None):
-        """Return the matrix 3 x len(tris) containing the indices
+    def _neighbors(self, tris=None): # TODO 没看懂
+        """Return the matrix （一个三角形最多3个邻居）3 x len(tris) containing the indices
         of the neighboring elements. Neighboring element over boundary
         is defined as the element itself."""
         if tris is None:
@@ -1340,4 +1341,4 @@ class MeshTri(Mesh):
         return MeshTri(p, tbi.astype(np.int64)), ref_data_n
 
     def mapping(self):
-        return spfem.mapping.MappingAffine(self)
+        return spfem.mapping.MappingAffine(self) # TODO 这一步也非常重要！！！

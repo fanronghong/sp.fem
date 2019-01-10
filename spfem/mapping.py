@@ -208,7 +208,7 @@ class MappingAffine(Mapping):
             self.dim=2            
             
             self.A={0:{},1:{}}
-    
+            # 参考许学军，p80式(4.2.3)
             self.A[0][0]=mesh.p[0,mesh.t[1,:]]-mesh.p[0,mesh.t[0,:]] # 所有单元的第2个点x坐标 减去 第1个点x坐标
             self.A[0][1]=mesh.p[0,mesh.t[2,:]]-mesh.p[0,mesh.t[0,:]] # 所有单元的第3个点x坐标 减去 第1个点x坐标
             self.A[1][0]=mesh.p[1,mesh.t[1,:]]-mesh.p[1,mesh.t[0,:]] # 所有单元的第2个点y坐标 减去 第1个点y坐标

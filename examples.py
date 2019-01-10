@@ -192,7 +192,12 @@ def Poisson_triP1():
     mesh = MeshTri()
     mesh.refine(1)
     # mesh.draw()
+    # mesh.draw_debug()
+    # mesh.draw_nodes(6)
+    # mesh.plot(z=[0, 0, 0, 0, 0, 0, 1, 0, 0])
+    # mesh.plot3(z=[0, 0, 0, 0, 0, 0, 1, 0, 0])
     # plt.show()
+    # print(mesh._neighbors()) # TODO 弄懂邻居
 
     # boundary and interior node sets
     D1 = np.nonzero(mesh.p[0, :] == 0)[0] # x坐标为0的点
@@ -200,17 +205,20 @@ def Poisson_triP1():
     D3 = np.nonzero(mesh.p[0, :] == 1)[0] # x坐标为1的点
     D4 = np.nonzero(mesh.p[1, :] == 1)[0] # y坐标为1的点
 
-    D = np.union1d(D1, D2);
-    D = np.union1d(D, D3);
-    D = np.union1d(D, D4);
+    D = np.union1d(D1, D2)
+    D = np.union1d(D, D3)
+    D = np.union1d(D, D4)
 
-    I = np.setdiff1d(np.arange(0, mesh.p.shape[1]), D) # 位于内部的点的编号，这里暗示了节点编号必须从0开始，一次递增
+    I = np.setdiff1d(np.arange(0, mesh.p.shape[1]), D) # 位于内部的点的编号，这里暗示了节点编号必须从0开始，依次递增
 
     bilin = lambda u, v, du, dv, x, h: du[0] * dv[0] + du[1] * dv[1]
     lin = lambda v, dv, x, h: 1 * v
 
     a = AssemblerElement(mesh, ElementTriP1()) # 用这个例子好好理解 mesh._build_mappings(), FIXME 重要
 
+    # 只在编号为1的单元计算单刚
+    A_ = a.iasm(bilin, tind=[1])
+    f_ = a.iasm(lin, tind=[1])
     A = a.iasm(bilin)
     f = a.iasm(lin)
 

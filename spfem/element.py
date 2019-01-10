@@ -30,7 +30,7 @@ class Element(object):
         """Returns global basis functions evaluated at some local points."""
         raise NotImplementedError("Global basis (gbasis) not implemented!")
 
-class AbstractElement(object):
+class AbstractElement(object): # TODO 继续看
     """A finite element defined through DOF functionals."""
 
     maxdeg = 0 #: Maximum polynomial degree
